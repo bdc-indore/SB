@@ -101,7 +101,7 @@
     <div id="viewSummary" class="space-y-3">
         <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 items-end">
             <div>
-                <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">📅 Target Month</label>
+                <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">📅 Target Month / Period</label>
                 <select id="sumMonth" onchange="renderSummaryTable()" class="ctrl-select text-purple-950 font-bold bg-purple-50"></select>
             </div>
             <div>
@@ -159,7 +159,7 @@
     <div id="viewOffices" class="space-y-3 hidden">
         <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 items-end">
             <div>
-                <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">📅 Target Month</label>
+                <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">📅 Target Month / Period</label>
                 <select id="offMonth" onchange="renderOfficeTable()" class="ctrl-select font-bold text-purple-950 bg-purple-50"></select>
             </div>
             <div>
@@ -238,7 +238,7 @@
     <div id="viewRankings" class="space-y-3 hidden">
         <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 items-end">
             <div>
-                <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">📅 Target Month</label>
+                <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">📅 Target Month / Period</label>
                 <select id="rnkMonth" onchange="renderRankingsTable()" class="ctrl-select font-bold text-purple-950 bg-purple-50"></select>
             </div>
             <div>
@@ -333,7 +333,7 @@
 
             <!-- Months Checkboxes -->
             <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-3">
-                <span class="text-[10px] font-bold uppercase text-purple-950">Select Months:</span>
+                <span class="text-[10px] font-bold uppercase text-purple-950">Select Months / Periods:</span>
                 <div class="flex flex-wrap gap-1.5 text-[11px] font-bold" id="cmpMonthWrap">
                     <!-- Populated dynamically -->
                 </div>
@@ -370,6 +370,7 @@
                 <table class="nil-table" id="tableCompare">
                     <thead></thead>
                     <tbody></tbody>
+                    <tfoot></tfoot>
                 </table>
             </div>
         </div>
@@ -427,6 +428,53 @@ const MONTH_BASE = {
     JUL: "July", AUG: "August", SEP: "September", OCT: "October", NOV: "November", DEC: "December"
 };
 let MONTH_NAMES = Object.assign({}, MONTH_BASE);
+
+// ---------------- PERIODS: single months + Q1 / Q2 + cumulative options ----------------
+// Financial-year quarters: Q1 = Apr-Jun, Q2 = Jul-Sep
+const Q_DEF = { Q1: ["APR","MAY","JUN"], Q2: ["JUL","AUG","SEP"] };
+const Q_LABEL = { Q1: "Q1 (April - June)", Q2: "Q2 (July - September)" };
+let periodDefs = {};      // key -> { key, label, short, months[], special }
+let periodOrder = [];     // keys in display order (months first, then special)
+let dataLastDay = "";     // last day of the latest month, e.g. "8" (from A1)
+
+function buildPeriods(){
+    periodDefs = {}; periodOrder = [];
+    availableMonths.forEach(m => {
+        const label = MONTH_NAMES[m] || m;
+        periodDefs[m] = { key: m, label, short: label.replace(/^([A-Za-z]{3})[A-Za-z]*/, "$1"), months: [m], special: false };
+        periodOrder.push(m);
+    });
+    // Quarters (only when every month of that quarter is present in the data)
+    Object.keys(Q_DEF).forEach(q => {
+        if(Q_DEF[q].every(m => availableMonths.includes(m))){
+            periodDefs[q] = { key: q, label: Q_LABEL[q], short: q, months: Q_DEF[q].slice(), special: true };
+            periodOrder.push(q);
+        }
+    });
+    const lastM = availableMonths[availableMonths.length - 1];
+    const firstName = MONTH_BASE[availableMonths[0]] || availableMonths[0];
+    // Cumulative till September (Apr..Sep) - hidden when September itself is the latest month (same as till date)
+    const sepIdx = availableMonths.indexOf("SEP");
+    if(sepIdx >= 0 && lastM !== "SEP"){
+        periodDefs.CUM_SEP = { key: "CUM_SEP", label: `Cumulative till September (${firstName} - September)`, short: "Cum. till Sep", months: availableMonths.slice(0, sepIdx + 1), special: true };
+        periodOrder.push("CUM_SEP");
+    }
+    // Cumulative till date (Apr .. latest month, up to the date in cell A1)
+    const endTxt = dataLastDay ? `${dataLastDay} ${MONTH_BASE[lastM] || lastM}` : (MONTH_BASE[lastM] || lastM);
+    periodDefs.CUM_DATE = { key: "CUM_DATE", label: `Cumulative Till Date (${firstName} to ${endTxt})`, short: "Cum. Till Date", months: availableMonths.slice(), special: true };
+    periodOrder.push("CUM_DATE");
+}
+function periodLabel(key){ return (periodDefs[key] && periodDefs[key].label) || MONTH_NAMES[key] || key; }
+function periodShort(key){ return (periodDefs[key] && periodDefs[key].short) || key; }
+// open / close / net of one record for a period (month, quarter or cumulative) - cached per record
+function getPD(r, key){
+    const cache = r._pc || (r._pc = {});
+    if(cache[key]) return cache[key];
+    const o = { open: 0, close: 0, net: 0 };
+    const def = periodDefs[key];
+    if(def) def.months.forEach(m => { const d = r.monthlyData[m]; if(d){ o.open += d.open; o.close += d.close; o.net += d.net; } });
+    return (cache[key] = o);
+}
 
 const divClassMap = {
     "INDORE CITY": "div-bg-indore-city",
@@ -647,6 +695,9 @@ function processDualCSV(masterCsv, dataCsv){
 
     MONTH_NAMES = Object.assign({}, MONTH_BASE);
     if(out.range) MONTH_NAMES[out.lastMonth] = `${MONTH_BASE[out.lastMonth]} (${out.range})`;
+    const endM = String(out.range || "").match(/-(\d{1,2})$/);
+    dataLastDay = endM ? String(Number(endM[1])) : "";
+    buildPeriods();
     return out;
 }
 
@@ -706,22 +757,28 @@ function initDropdowns(){
         const el = document.getElementById(id);
         if(!el) return;
         el.innerHTML = "";
-        availableMonths.forEach(m => {
+        const gMonths = document.createElement("optgroup"); gMonths.label = "Months";
+        const gSpecial = document.createElement("optgroup"); gSpecial.label = "Quarters / Cumulative";
+        periodOrder.forEach(k => {
             const opt = document.createElement("option");
-            opt.value = m;
-            opt.textContent = MONTH_NAMES[m] || m;
-            el.appendChild(opt);
+            opt.value = k;
+            opt.textContent = periodLabel(k);
+            (periodDefs[k].special ? gSpecial : gMonths).appendChild(opt);
         });
+        el.appendChild(gMonths);
+        if(gSpecial.children.length) el.appendChild(gSpecial);
         if(availableMonths.length) el.value = availableMonths[availableMonths.length - 1];
     });
 
     const cmpWrap = document.getElementById("cmpMonthWrap");
     if(cmpWrap){
-        cmpWrap.innerHTML = availableMonths.map(m => `
-            <label class="flex items-center gap-1 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded border border-purple-200 cursor-pointer">
-                <input type="checkbox" name="cmpMonths" value="${m}" checked onchange="renderCompareTable()" class="accent-purple-900"> ${MONTH_NAMES[m] || m}
-            </label>
-        `).join("");
+        cmpWrap.innerHTML = periodOrder.map(k => {
+            const sp = periodDefs[k].special;
+            return `
+            <label class="flex items-center gap-1 ${sp ? "bg-emerald-50 hover:bg-emerald-100 border-emerald-300" : "bg-purple-50 hover:bg-purple-100 border-purple-200"} px-2.5 py-1 rounded border cursor-pointer">
+                <input type="checkbox" name="cmpMonths" value="${k}" ${sp ? "" : "checked"} onchange="renderCompareTable()" class="accent-purple-900"> ${periodLabel(k)}
+            </label>`;
+        }).join("");
     }
     
     const dSelects = ["sumDivision", "offDivision", "rnkDivision", "cmpDivision"];
@@ -781,7 +838,7 @@ function renderSummaryTable(){
     const viewType = document.getElementById("sumViewType").value;
     const isDivOnly = viewType === "division";
     
-    document.getElementById("thSumCurrentMonth").textContent = `${MONTH_NAMES[selM] || selM} Data`;
+    document.getElementById("thSumCurrentMonth").textContent = `${periodLabel(selM)} Data`;
     document.getElementById("thSumSubDiv").classList.toggle("hidden", isDivOnly);
 
     let filtered = globalData;
@@ -793,9 +850,10 @@ function renderSummaryTable(){
         if(!grouped[key]){
             grouped[key] = { div: r.division, sd: r.subDivision, mOpen: 0, mClose: 0, mNet: 0, cOpen: 0, cClose: 0, cNet: 0 };
         }
-        grouped[key].mOpen += (r.monthlyData[selM]?.open || 0);
-        grouped[key].mClose += (r.monthlyData[selM]?.close || 0);
-        grouped[key].mNet += (r.monthlyData[selM]?.net || 0);
+        const pd = getPD(r, selM);
+        grouped[key].mOpen += pd.open;
+        grouped[key].mClose += pd.close;
+        grouped[key].mNet += pd.net;
         grouped[key].cOpen += r.cumulative.open;
         grouped[key].cClose += r.cumulative.close;
         grouped[key].cNet += r.cumulative.net;
@@ -895,15 +953,15 @@ function renderOfficeTable(){
     const metric = document.getElementById("offSortMetric").value; // open, close, net
     const dir = document.getElementById("offSortDir").value; // desc, asc
     
-    document.getElementById("thOffCurrentMonth").textContent = `${MONTH_NAMES[selM] || selM} Data`;
+    document.getElementById("thOffCurrentMonth").textContent = `${periodLabel(selM)} Data`;
 
     let filtered = globalData;
     if(selDiv !== "All") filtered = filtered.filter(r => r.division === selDiv);
     if(selClass !== "All") filtered = filtered.filter(r => r.officeClass === selClass);
 
     filtered.sort((a,b) => {
-        let vA = a.monthlyData[selM] ? a.monthlyData[selM][metric] : 0;
-        let vB = b.monthlyData[selM] ? b.monthlyData[selM][metric] : 0;
+        const vA = getPD(a, selM)[metric];
+        const vB = getPD(b, selM)[metric];
         return dir === "desc" ? vB - vA : vA - vB;
     });
 
@@ -926,7 +984,7 @@ function appendOfficeChunk(selM){
     
     let html = "";
     chunk.forEach((item, i) => {
-        const md = item.monthlyData[selM] || {open:0, close:0, net:0};
+        const md = getPD(item, selM);
         html += `
             <tr class="hover:bg-slate-50 border-b border-slate-100">
                 <td>${currentOfficeRenderIndex + i + 1}</td>
@@ -958,15 +1016,15 @@ function renderRankingsTable(){
     const selDiv = document.getElementById("rnkDivision").value;
     const selClass = document.getElementById("rnkClass").value;
 
-    document.getElementById("thRnkCurrentMonth").textContent = `${MONTH_NAMES[selM] || selM} Data`;
+    document.getElementById("thRnkCurrentMonth").textContent = `${periodLabel(selM)} Data`;
 
     let filtered = globalData;
     if(selDiv !== "All") filtered = filtered.filter(r => r.division === selDiv);
     if(selClass !== "All") filtered = filtered.filter(r => r.officeClass === selClass);
 
     filtered.sort((a,b) => {
-        let vA = a.monthlyData[selM] ? a.monthlyData[selM][metric] : 0;
-        let vB = b.monthlyData[selM] ? b.monthlyData[selM][metric] : 0;
+        const vA = getPD(a, selM)[metric];
+        const vB = getPD(b, selM)[metric];
         return rType === "top" ? vB - vA : vA - vB;
     });
 
@@ -978,7 +1036,7 @@ function renderRankingsTable(){
     }
 
     tbody.innerHTML = sliced.map((item, i) => {
-        const md = item.monthlyData[selM] || {open:0, close:0, net:0};
+        const md = getPD(item, selM);
         return `
             <tr class="hover:bg-slate-50 border-b border-slate-100">
                 <td class="font-extrabold ${rType==='top'?'text-emerald-800':'text-rose-800'}">#${i+1}</td>
@@ -1015,7 +1073,8 @@ function renderCompareTable(){
     
     const thead = document.querySelector("#tableCompare thead");
     const tbody = document.querySelector("#tableCompare tbody");
-    thead.innerHTML = ""; tbody.innerHTML = "";
+    const tfoot = document.querySelector("#tableCompare tfoot");
+    thead.innerHTML = ""; tbody.innerHTML = ""; tfoot.innerHTML = "";
     
     if(!cMonths.length || !cMetrics.length){
         tbody.innerHTML = '<tr><td class="py-8 text-rose-600 font-bold">Select at least one month and one metric.</td></tr>';
@@ -1033,7 +1092,7 @@ function renderCompareTable(){
 
     let tr2 = '<tr>';
     cMetrics.forEach(() => {
-        cMonths.forEach(m => { tr2 += `<th style="background-color:#fce4d6">${(MONTH_NAMES[m] || m).replace(/^([A-Za-z]{3})[A-Za-z]*/, '$1')}</th>`; });
+        cMonths.forEach(m => { tr2 += `<th style="background-color:${periodDefs[m] && periodDefs[m].special ? "#e2efda" : "#fce4d6"}">${periodShort(m)}</th>`; });
     });
     tr2 += '</tr>';
     thead.innerHTML = tr1 + tr2;
@@ -1050,12 +1109,10 @@ function renderCompareTable(){
             cMonths.forEach(m => map[k].data[m] = {open:0, close:0, net:0});
         }
         cMonths.forEach(m => {
-            const md = r.monthlyData[m];
-            if(md){
-                map[k].data[m].open += md.open;
-                map[k].data[m].close += md.close;
-                map[k].data[m].net += md.net;
-            }
+            const md = getPD(r, m);
+            map[k].data[m].open += md.open;
+            map[k].data[m].close += md.close;
+            map[k].data[m].net += md.net;
         });
     });
 
@@ -1086,6 +1143,21 @@ function renderCompareTable(){
         });
         return `<tr class="hover:bg-slate-50 border-b border-slate-100">${nameCells}${metricCells}</tr>`;
     }).join("");
+
+    // ---- REGION TOTAL (last row) ----
+    const tot = {};
+    cMonths.forEach(m => { tot[m] = { open: 0, close: 0, net: 0 }; });
+    keys.forEach(k => cMonths.forEach(m => {
+        tot[m].open += map[k].data[m].open; tot[m].close += map[k].data[m].close; tot[m].net += map[k].data[m].net;
+    }));
+    const lblCols = lvl === "office" ? 4 : lvl === "subdivision" ? 2 : 1;
+    const isAll = selDiv === "All" && selClass === "All";
+    let totCells = "";
+    cMetrics.forEach(metric => cMonths.forEach(m => {
+        const v = tot[m][metric];
+        totCells += metric === "net" ? `<td>${formatNet(v)}</td>` : `<td>${v.toLocaleString("en-IN")}</td>`;
+    }));
+    tfoot.innerHTML = `<tr class="row-grand-total"><td colspan="${lblCols}" class="text-left pl-3 uppercase">${isAll ? "Region Total" : "Total (Filtered)"}</td>${totCells}</tr>`;
 }
 
 // ---------------- DRILLDOWN MODAL ----------------
@@ -1095,13 +1167,13 @@ function openDrillModal(month, division, sd){
         if(sd !== "ALL" && r.subDivision !== sd) return false;
         return true;
     });
-    filtered.sort((a,b) => (b.monthlyData[month]?.net || 0) - (a.monthlyData[month]?.net || 0));
+    filtered.sort((a,b) => getPD(b, month).net - getPD(a, month).net);
 
     document.getElementById("modalTitle").textContent = `Sub-Division: ${sd==="ALL" ? division : `${sd} (${division})`}`;
-    document.getElementById("modalSubtitle").textContent = `Month: ${MONTH_NAMES[month]} | Total ${filtered.length} offices.`;
+    document.getElementById("modalSubtitle").textContent = `Period: ${periodLabel(month)} | Total ${filtered.length} offices.`;
 
     document.querySelector("#tableModalOffices tbody").innerHTML = filtered.map((item, i) => {
-        const md = item.monthlyData[month] || {open:0, close:0, net:0};
+        const md = getPD(item, month);
         return `
         <tr class="hover:bg-slate-50 border-b border-slate-100">
             <td>${i+1}</td>
@@ -1149,3 +1221,4 @@ initApp();
 </script>
 </body>
 </html>
+
