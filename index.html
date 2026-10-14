@@ -33,6 +33,23 @@
         .clickable-cell:hover{opacity:.75}
         .ctrl-select{border:1px solid #cbd5e1;border-radius:0.5rem;padding:0.35rem 0.5rem;font-size:0.75rem;background-color:#f8fafc;font-weight:600;outline:none;width:100%}
         .ctrl-select:focus{border-color:#581c87}
+
+        /* ---- Summary report formats ---- */
+        .t-prog th{background-color:#fac090;color:#000;border:1px solid #000;font-size:12px}
+        .t-prog td{border:1px solid #000;font-size:12px}
+        .t-prog th.title-cell{font-size:20px;font-weight:800;padding:8px}
+        .t-prog tr.row-div-total td,.t-prog tr.row-grand-total td{background-color:#fac090;font-weight:800;font-size:13px;color:#000}
+        .t-short th{background-color:#1f3864;color:#fff;border:1px solid #fff;font-size:12px}
+        .t-short td{border:1px solid #000;font-size:12px}
+        .t-short th.title-cell{background-color:#f4b183;color:#000;font-size:20px;font-weight:800;border:1px solid #000;padding:8px}
+        .t-short tr.row-div-total td,.t-short tr.row-grand-total td{background-color:#fce4d6;font-weight:800;color:#000}
+        .t-prog td[data-t],.t-short td[data-t]{text-align:right}
+        .t-prog .div-cell,.t-short .div-cell{font-weight:700;text-align:center;vertical-align:middle;background:#fff}
+        .t-short .div-cell{text-align:left}
+        .t-prog .sd-cell,.t-short .sd-cell{text-align:left}
+        .t-prog tr.row-grand-total td.grand-lbl{text-align:center}
+        .t-prog .clickable-cell,.t-short .clickable-cell{text-decoration:none}
+        .t-short tr.row-grand-total td:first-child,.t-short tr.row-div-total td:first-child{text-align:left}
     </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen flex flex-col justify-between text-xs">
@@ -111,43 +128,33 @@
                 </select>
             </div>
             <div>
-                <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">📋 Aggregation Level</label>
+                <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">📋 Report Type</label>
                 <select id="sumViewType" onchange="renderSummaryTable()" class="ctrl-select">
-                    <option value="subdivision">Sub-Division Wise</option>
-                    <option value="division">Division Wise Only</option>
+                    <option value="div_prog">Division Wise (Progressive)</option>
+                    <option value="sd_prog" selected>Sub Division Wise (Progressive)</option>
+                    <option value="div_short">Division Wise (Shortfall)</option>
+                    <option value="sd_short">Sub Division Wise (Shortfall)</option>
                 </select>
             </div>
         </div>
+
+        <div id="sumTargetWarn" class="hidden bg-amber-50 border border-amber-300 text-amber-900 rounded-xl px-3 py-2 text-[11px]"></div>
 
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" id="cardSummary">
             <div class="report-header px-4 py-2.5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div>
                     <h2 id="sumTableTitle" class="font-bold text-sm">📊 POSB Summary</h2>
-                    <p class="text-[10px] text-purple-200">Includes Target Month Data + Cumulative Total (Till Date)</p>
+                    <p id="sumTableSub" class="text-[10px] text-purple-200"></p>
                 </div>
                 <div class="flex items-center gap-1.5 flex-wrap">
-                    <button onclick='exportTableToExcel("tableSummary","POSB_Summary_Report.xlsx")' class="bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold px-2 py-1 rounded shadow cursor-pointer">📥 Excel</button>
-                    <button onclick='exportSingleTablePDF("tableSummary","POSB Summary Report")' class="bg-rose-800 hover:bg-rose-900 text-white text-[11px] font-semibold px-2 py-1 rounded shadow cursor-pointer">📄 PDF</button>
+                    <button onclick='exportSummaryExcel()' class="bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold px-2 py-1 rounded shadow cursor-pointer">📥 Excel</button>
+                    <button onclick='exportSummaryPDF()' class="bg-rose-800 hover:bg-rose-900 text-white text-[11px] font-semibold px-2 py-1 rounded shadow cursor-pointer">📄 PDF</button>
+                    <button onclick='downloadSummaryImage()' class="bg-sky-700 hover:bg-sky-800 text-white text-[11px] font-semibold px-2 py-1 rounded shadow cursor-pointer">🖼️ Image</button>
                 </div>
             </div>
-            <div class="overflow-x-auto p-2">
-                <table class="nil-table" id="tableSummary">
-                    <thead>
-                        <tr>
-                            <th rowspan="2" id="thSumDiv" style="width:12%">Division</th>
-                            <th rowspan="2" id="thSumSubDiv" style="width:16%">Sub-Division</th>
-                            <th colspan="3" id="thSumCurrentMonth" style="background-color:#d9edf7">Selected Month Data</th>
-                            <th colspan="3" style="background-color:#e2efda">Cumulative (All Months Till Date)</th>
-                        </tr>
-                        <tr>
-                            <th style="background-color:#d9edf7;width:12%">A/C Opened</th>
-                            <th style="background-color:#d9edf7;width:12%">A/C Closed</th>
-                            <th style="background-color:#d9edf7;width:12%">Net Addition</th>
-                            <th style="background-color:#e2efda;width:12%">Cum. Opened</th>
-                            <th style="background-color:#e2efda;width:12%">Cum. Closed</th>
-                            <th style="background-color:#e2efda;width:12%">Cum. Net Addition</th>
-                        </tr>
-                    </thead>
+            <div class="overflow-x-auto p-2" id="summaryCapture">
+                <table class="nil-table t-prog" id="tableSummary">
+                    <thead></thead>
                     <tbody></tbody>
                     <tfoot></tfoot>
                 </table>
@@ -355,6 +362,10 @@
                         <input type="checkbox" name="cmpMetric" value="net" checked onchange="renderCompareTable()" class="accent-purple-900">
                         <span>Net Addition</span>
                     </label>
+                    <label class="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded border border-slate-200 cursor-pointer hover:bg-slate-100" title="Net Addition minus period target (Division / Sub-Division level only)">
+                        <input type="checkbox" name="cmpMetric" value="short" onchange="renderCompareTable()" class="accent-purple-900">
+                        <span>Shortfall (Net - Target)</span>
+                    </label>
                 </div>
             </div>
         </div>
@@ -488,7 +499,7 @@ const divClassMap = {
     "OTHER DIVISION": "div-bg-other"
 };
 
-const METRIC_LABELS = { open: "A/C Opened", close: "A/C Closed", net: "Net Addition" };
+const METRIC_LABELS = { open: "A/C Opened", close: "A/C Closed", net: "Net Addition", short: "Shortfall (Net - Target)" };
 
 // Performance Pagination globals
 let currentOfficeDataList = [];
@@ -831,118 +842,322 @@ function switchTab(tabKey){
     });
 }
 
-// ---------------- 1. SUMMARY VIEW ----------------
+// ---------------- 1. SUMMARY VIEW (Progressive / Shortfall reports) ----------------
+// Sub-division wise FY 2026-27 net-addition targets (source: Sub_div_wise_net.xlsx).
+// Format: [ "Sub-Division name", FY target, [aliases...] ]
+// Division target = sum of its sub-division targets.  Proportionate / monthly targets are derived from these.
+const FY_START_YEAR = 2026;
+const SD_TARGETS = {
+    "INDORE CITY": [["EAST", 57028, ["INDORE EAST"]], ["WEST", 43047, ["INDORE WEST"]]],
+    "INDORE MFL": [["DEWAS", 23244, []], ["DHAR NORTH", 21810, []], ["DHAR SOUTH", 22096, []], ["INDORE", 19227, []], ["KANNOD", 22957, []], ["KUKSHI", 25827, []], ["MHOW", 18944, []]],
+    "KHANDWA": [["BARWAHA", 23450, []], ["BARWANI", 21120, []], ["BURHANPUR", 24310, []], ["KHANDWA NORTH", 21630, []], ["KHANDWA SOUTH", 23870, []], ["KHARGONE EAST", 22540, []], ["KHARGONE WEST", 20550, []]],
+    "MANDSAUR": [["GAROTH", 30458, []], ["MANDSAUR", 36175, []], ["NEEMUCH", 32225, []], ["PIPLIA", 28274, []]],
+    "RATLAM": [["RATLAM", 32743, []], ["JAORA", 26529, []], ["PETLAWAD", 25334, []], ["JHABUA", 29159, []], ["ALIRAJPUR", 22227, []]],
+    "SEHORE": [["ASHTA", 34392, []], ["BIAORA", 33890, []], ["RAJGARH", 34092, []], ["SEHORE", 34892, []]],
+    "UJJAIN": [["AGAR MALWA", 20407, []], ["SHAJAPUR", 28541, []], ["SHUJALPUR MANDI", 20161, []], ["UJJAIN EAST", 23753, []], ["UJJAIN WEST", 42311, []]]
+};
+const DIV_LABEL = { "INDORE CITY": "Indore City", "INDORE MFL": "Indore Moffusil", "KHANDWA": "Khandwa", "MANDSAUR": "Mandsaur", "RATLAM": "Ratlam", "SEHORE": "Sehore", "UJJAIN": "Ujjain" };
+const DIV_ORDER = Object.keys(SD_TARGETS);
+
+// Colour thresholds for the Shortfall report (change here if your rule changes)
+const PROP_GREEN_FROM = 75;       // % Prop Ach  >= this  -> green
+const PROP_LIGHT_FROM = 70.9;     // % Prop Ach  >= this  -> light green, below -> red
+
+const FY_ORDER = ["APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC","JAN","FEB","MAR"];
+const CAL_NUM = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12 };
+const MON3 = { JAN:"Jan", FEB:"Feb", MAR:"Mar", APR:"Apr", MAY:"May", JUN:"Jun", JUL:"Jul", AUG:"Aug", SEP:"Sep", OCT:"Oct", NOV:"Nov", DEC:"Dec" };
+
+const SD_STOP = new Set(["SD","SUB","DN","DIV","DIVN","DIVISION","SUBDIV","SUBDIVISION","SUBDN","S","D"]);
+function normSD(s){
+    return String(s == null ? "" : s).toUpperCase().replace(/\./g, "").split(/[^A-Z0-9]+/).filter(t => t && !SD_STOP.has(t)).join(" ");
+}
+const TARGET_INDEX = {};   // divKey -> Map(normalised name/alias -> {name, t})
+Object.keys(SD_TARGETS).forEach(dk => {
+    const m = new Map();
+    SD_TARGETS[dk].forEach(([name, t, aliases]) => {
+        const ent = { name, t };
+        m.set(normSD(name), ent);
+        (aliases || []).forEach(a => m.set(normSD(a), ent));
+    });
+    TARGET_INDEX[dk] = m;
+});
+// Division targets = the "Total" rows of the Excel (official figures).
+// NOTE: in the Excel, sum of sub-division targets differs from these for INDORE MFL (+6) and KHANDWA (-218) - please verify.
+const DIV_TARGET = { "INDORE CITY": 100075, "INDORE MFL": 154111, "KHANDWA": 157252, "MANDSAUR": 127132, "RATLAM": 135992, "SEHORE": 137266, "UJJAIN": 135173 };
+
+function divKey(d){
+    d = String(d == null ? "" : d).toUpperCase().trim();
+    if(SD_TARGETS[d]) return d;
+    if(/CITY/.test(d)) return "INDORE CITY";
+    if(/MFL|MOFUSSIL|MOFUSIL/.test(d)) return "INDORE MFL";
+    for(const k of Object.keys(SD_TARGETS)){ if(d && (d.includes(k) || k.includes(d))) return k; }
+    return null;
+}
+function sdTargetOf(div, sd){
+    const dk = divKey(div);
+    if(!dk) return { t: 0, ok: false };
+    const idx = TARGET_INDEX[dk], n = normSD(sd);
+    if(idx.has(n)) return { t: idx.get(n).t, ok: true, order: SD_TARGETS[dk].findIndex(x => x[0] === idx.get(n).name) };
+    const hits = new Set();
+    idx.forEach((ent, k) => { if(n && (k.includes(n) || n.includes(k))) hits.add(ent); });
+    if(hits.size === 1){ const ent = [...hits][0]; return { t: ent.t, ok: true, order: SD_TARGETS[dk].findIndex(x => x[0] === ent.name) }; }
+    return { t: 0, ok: false };
+}
+function divLabel(d){ const k = divKey(d); return (k && DIV_LABEL[k]) || d; }
+
+const enc = s => encodeURIComponent(String(s == null ? "" : s));
+function drillEnc(m, d, s){ openDrillModal(m, decodeURIComponent(d), decodeURIComponent(s)); }
+
+// ---- period helpers (labels, FY month numbers, days) ----
+const yearOfM = m => (FY_ORDER.indexOf(m) >= 0 && FY_ORDER.indexOf(m) < 9) ? FY_START_YEAR : FY_START_YEAR + 1;
+const daysInM = m => new Date(yearOfM(m), CAL_NUM[m] || 1, 0).getDate();
+const pad2 = n => String(n).padStart(2, "0");
+
+function periodCtx(key){
+    const def = periodDefs[key];
+    if(!def) return null;
+    const months = def.months, firstM = months[0], lastM = months[months.length - 1];
+    const iFirst = availableMonths.indexOf(firstM), iLast = availableMonths.indexOf(lastM);
+    const latest = availableMonths[availableMonths.length - 1];
+    const endDay = m => (m === latest && dataLastDay) ? Number(dataLastDay) : daysInM(m);
+    const dm = (m, day) => `${pad2(day)}.${pad2(CAL_NUM[m] || 1)}`;
+    const dmy = (m, day, full) => `${dm(m, day)}.${full ? yearOfM(m) : String(yearOfM(m)).slice(2)}`;
+    const firstAll = availableMonths[0];
+    let elapsed = 0, total = 0;
+    months.forEach(m => { elapsed += endDay(m); total += daysInM(m); });
+    const yy = String(FY_START_YEAR).slice(2), yy2 = String(FY_START_YEAR + 1).slice(2);
+    return {
+        key, def, months, lastM,
+        priorMonths: availableMonths.slice(0, iFirst),
+        fyNo: FY_ORDER.indexOf(lastM) + 1,
+        nMonths: months.length,
+        pace: total ? elapsed / total * 100 : 100,
+        fyLabel: `${yy}-${yy2}`,
+        fyLabelLong: `${FY_START_YEAR}-${yy2}`,
+        monLabel: months.length === 1 ? `${MON3[lastM] || lastM}-${String(yearOfM(lastM)).slice(2)}` : def.short,
+        curRange: `${dmy(months[0], 1)} to ${dmy(lastM, endDay(lastM))}`,
+        curRangeShort: `${dm(months[0], 1)}-${dm(lastM, endDay(lastM))}`,
+        priorRange: iFirst > 0 ? `${dmy(firstAll, 1)} to ${dmy(availableMonths[iFirst - 1], endDay(availableMonths[iFirst - 1]))}` : "",
+        cumRangeShort: `${dm(firstAll, 1)}-${dm(lastM, endDay(lastM))}`,
+        endDM: dm(lastM, endDay(lastM)),
+        monthEndDM: dm(lastM, daysInM(lastM)),
+        titleRange: `${dmy(firstAll, 1, true)} to ${dmy(lastM, endDay(lastM), true)}`
+    };
+}
+function sumMonths(r, months){
+    const o = { o: 0, c: 0, n: 0 };
+    months.forEach(m => { const d = r.monthlyData[m]; if(d){ o.o += d.open; o.c += d.close; o.n += d.net; } });
+    return o;
+}
+
+// ---- cell helpers (data-t / data-v keep real numbers in the Excel export) ----
+const plainN = v => String(Math.round(v));
+function tdN(v, style, cls){
+    const val = Math.round(v);
+    return `<td data-t="n" data-v="${val}" class="${cls || ""}" style="${style || ""}">${val}</td>`;
+}
+function tdP(p, style){
+    if(p == null || !isFinite(p)) return `<td style="${style || ""}">-</td>`;
+    const v = Math.round(p * 100) / 100;
+    return `<td data-t="n" data-v="${v}" style="${style || ""}">${v.toFixed(2)}</td>`;
+}
+const NEG_STYLE = "background:#ff0000;color:#ffff00;font-weight:700";
+function tdNet(v, extra){ return tdN(v, (Math.round(v) < 0 ? NEG_STYLE : "") + (extra ? ";" + extra : "")); }
+
+function calcRow(a, fy, ctx){
+    const tM = Math.round(fy * ctx.nMonths / 12);
+    const prop = Math.round(fy * ctx.fyNo / 12);
+    const cum = a.pN + a.cN;
+    return {
+        fy, tM, prop, cum,
+        pctM: tM ? a.cN / tM * 100 : null,
+        shM: a.cN - tM,
+        pctProp: prop ? cum / prop * 100 : null,
+        shProp: cum - prop,
+        pctFY: fy ? cum / fy * 100 : null,
+        progShort: prop - cum
+    };
+}
+
 function renderSummaryTable(){
     const selM = document.getElementById("sumMonth").value;
     const selDiv = document.getElementById("sumDivision").value;
-    const viewType = document.getElementById("sumViewType").value;
-    const isDivOnly = viewType === "division";
-    
-    document.getElementById("thSumCurrentMonth").textContent = `${periodLabel(selM)} Data`;
-    document.getElementById("thSumSubDiv").classList.toggle("hidden", isDivOnly);
+    const view = document.getElementById("sumViewType").value;      // div_prog | sd_prog | div_short | sd_short
+    const isSD = view.startsWith("sd"), isShort = view.endsWith("short");
+    const table = document.getElementById("tableSummary");
+    const thead = table.querySelector("thead"), tbody = table.querySelector("tbody"), tfoot = table.querySelector("tfoot");
+    const warnEl = document.getElementById("sumTargetWarn");
+    tbody.innerHTML = ""; tfoot.innerHTML = ""; thead.innerHTML = "";
+    table.classList.toggle("t-prog", !isShort);
+    table.classList.toggle("t-short", isShort);
+
+    const ctx = periodCtx(selM);
+    if(!ctx || !globalData.length){
+        tbody.innerHTML = `<tr><td class="py-8 text-slate-400">No records found.</td></tr>`;
+        warnEl.classList.add("hidden");
+        return;
+    }
+    const hasPrior = !isShort && ctx.priorMonths.length > 0;
 
     let filtered = globalData;
     if(selDiv !== "All") filtered = filtered.filter(r => r.division === selDiv);
-    
+
+    // ---- aggregate ----
     const grouped = {};
     filtered.forEach(r => {
-        const key = isDivOnly ? r.division : `${r.division}||${r.subDivision}`;
-        if(!grouped[key]){
-            grouped[key] = { div: r.division, sd: r.subDivision, mOpen: 0, mClose: 0, mNet: 0, cOpen: 0, cClose: 0, cNet: 0 };
-        }
-        const pd = getPD(r, selM);
-        grouped[key].mOpen += pd.open;
-        grouped[key].mClose += pd.close;
-        grouped[key].mNet += pd.net;
-        grouped[key].cOpen += r.cumulative.open;
-        grouped[key].cClose += r.cumulative.close;
-        grouped[key].cNet += r.cumulative.net;
+        const key = isSD ? `${r.division}||${r.subDivision}` : r.division;
+        const g = grouped[key] || (grouped[key] = { div: r.division, sd: r.subDivision, cO: 0, cC: 0, cN: 0, pO: 0, pC: 0, pN: 0 });
+        const cur = getPD(r, selM), pr = sumMonths(r, ctx.priorMonths);
+        g.cO += cur.open; g.cC += cur.close; g.cN += cur.net;
+        g.pO += pr.o; g.pC += pr.c; g.pN += pr.n;
     });
-
-    const tbody = document.querySelector("#tableSummary tbody");
-    const tfoot = document.querySelector("#tableSummary tfoot");
-    tbody.innerHTML = ""; tfoot.innerHTML = "";
-
     const list = Object.values(grouped);
-    if(!list.length){
-        tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-slate-400">No records found.</td></tr>`;
-        return;
+
+    // ---- targets (+ warning for sub-divisions whose target could not be matched) ----
+    const missing = [];
+    list.forEach(a => {
+        a.dk = divKey(a.div);
+        if(isSD){
+            const t = sdTargetOf(a.div, a.sd);
+            a.fy = t.t; a.order = t.ok ? t.order : 999;
+            if(!t.ok) missing.push(`${a.div} / ${a.sd}`);
+        } else {
+            a.fy = a.dk ? DIV_TARGET[a.dk] : 0; a.order = 0;
+            if(!a.dk) missing.push(a.div);
+        }
+    });
+    if(missing.length){
+        warnEl.innerHTML = `⚠️ In ka target nahi mila (target 0 maana gaya): <b>${missing.join(" | ")}</b> — <code>SD_TARGETS</code> mein naam/alias check karein.`;
+        warnEl.classList.remove("hidden");
+    } else warnEl.classList.add("hidden");
+
+    // ---- group by division, sorted in report order ----
+    const divRank = d => { const k = divKey(d); const i = DIV_ORDER.indexOf(k); return i < 0 ? 99 : i; };
+    const tree = {};
+    list.forEach(a => { (tree[a.div] = tree[a.div] || []).push(a); });
+    const divs = Object.keys(tree).sort((x, y) => divRank(x) - divRank(y) || x.localeCompare(y));
+    divs.forEach(d => tree[d].sort((x, y) => x.order - y.order || x.sd.localeCompare(y.sd)));
+
+    const blank = () => ({ cO: 0, cC: 0, cN: 0, pO: 0, pC: 0, pN: 0, fy: 0 });
+    const add = (t, a) => { ["cO","cC","cN","pO","pC","pN"].forEach(k => t[k] += a[k]); };
+    const grand = blank();
+    const isAll = selDiv === "All";
+    const grandLabel = isShort ? (isAll ? "Indore Region" : "Total (Filtered)") : (isAll ? "Grand Total" : "Total (Filtered)");
+
+    // ---- header ----
+    const lead = isSD ? 2 : 1;
+    const TH = (txt, attrs) => `<th ${attrs || ""}>${txt}</th>`;
+    let N, titleTxt;
+    if(isShort){
+        N = lead + 13;
+        titleTxt = `Status of Net addition of POSB accounts from ${ctx.titleRange}`;
+        thead.innerHTML = `
+            <tr><th colspan="${N}" class="title-cell">${titleTxt}</th></tr>
+            <tr>
+                ${TH("Division")}${isSD ? TH("Sub Division") : ""}
+                ${TH(`Target ${ctx.monLabel}`)}
+                ${TH(`A/c Opened ${ctx.curRangeShort}`)}${TH(`A/c Closed ${ctx.curRangeShort}`)}${TH(`Net ${ctx.curRangeShort}`)}
+                ${TH("% monthly")}${TH("Shortfall monthly")}
+                ${TH(`Prop Target ${ctx.monthEndDM}`)}${TH(`Prop Ach ${ctx.endDM}`)}${TH("% Prop Ach")}${TH("Shortfall Prop")}
+                ${TH(`Target FY ${ctx.fyLabelLong}`)}${TH(`Net ${ctx.cumRangeShort}`)}${TH("% total FY")}
+            </tr>`;
+    } else {
+        N = lead + 2 + (hasPrior ? 3 : 0) + 3 + 1;
+        titleTxt = isSD ? "Sub Division Wise POSB A/c Opened, Closed and Net addition Status" : "Division Wise POSB A/c Opened, Closed and Net addition Status";
+        const upto = `${MON3[ctx.lastM] || ctx.lastM}-${String(yearOfM(ctx.lastM)).slice(2)}`;
+        thead.innerHTML = `
+            <tr><th colspan="${N}" class="title-cell">${titleTxt}</th></tr>
+            <tr>
+                ${TH("Division Name", 'rowspan="2"')}${isSD ? TH("Sub-Division Name", 'rowspan="2"') : ""}
+                ${TH(`Total Target Net addition ${ctx.fyLabel}`, 'rowspan="2"')}
+                ${TH(`Proportionate Target Net addition upto ${upto}`, 'rowspan="2"')}
+                ${hasPrior ? TH(`<i>Total ${ctx.priorRange}</i>`, 'colspan="3"') : ""}
+                ${TH(`<i>${ctx.curRange}</i>`, 'colspan="3"')}
+                ${TH(`Total Shortfall upto ${upto} in Net addition`, 'rowspan="2"')}
+            </tr>
+            <tr>
+                ${hasPrior ? TH("A/c Opened") + TH("A/c Closed") + TH("Net addition") : ""}
+                ${TH("A/c Opened")}${TH("A/c Closed")}${TH("Net addition")}
+            </tr>`;
     }
 
-    let gMOpen=0, gMClose=0, gMNet=0, gCOpen=0, gCClose=0, gCNet=0;
+    // ---- row builders ----
+    const redGreenPct = (p, kind) => {
+        if(p == null || !isFinite(p)) return "";
+        if(kind === "m") return p < ctx.pace ? "background:#ff0000;color:#fff;font-weight:700" : "background:#c6e0b4";
+        if(p >= PROP_GREEN_FROM) return "background:#92d050";
+        if(p >= PROP_LIGHT_FROM) return "background:#c6e0b4";
+        return "background:#ff0000;color:#ffff00;font-weight:700";
+    };
+    function dataCells(a, c){
+        if(isShort){
+            return tdN(c.tM) + tdN(a.cO) + tdN(a.cC) + tdNet(a.cN)
+                + tdP(c.pctM, redGreenPct(c.pctM, "m")) + tdN(c.shM)
+                + tdN(c.prop) + tdN(c.cum) + tdP(c.pctProp, redGreenPct(c.pctProp, "p")) + tdN(c.shProp)
+                + tdN(c.fy) + tdN(c.cum) + tdP(c.pctFY);
+        }
+        return tdN(c.fy) + tdN(c.prop)
+            + (hasPrior ? tdN(a.pO) + tdN(a.pC) + tdNet(a.pN) : "")
+            + tdN(a.cO) + tdN(a.cC) + tdNet(a.cN)
+            + tdN(c.progShort);
+    }
+    const mkCell = (txt, div, sd, cls) => `<td class="${cls}" onclick="drillEnc('${selM}','${enc(div)}','${enc(sd)}')">${txt}</td>`;
+    const totalStyle = isShort ? "" : "";
     let html = "";
 
-    if(isDivOnly){
-        list.sort((a,b)=>a.div.localeCompare(b.div)).forEach(item => {
-            gMOpen+=item.mOpen; gMClose+=item.mClose; gMNet+=item.mNet; gCOpen+=item.cOpen; gCClose+=item.cClose; gCNet+=item.cNet;
-            const style = divClassMap[item.div] || divClassMap["OTHER DIVISION"];
-            html += `
-                <tr class="hover:bg-slate-50 border-b border-slate-100">
-                    <td class="${style} text-left font-bold clickable-cell" onclick="openDrillModal('${selM}','${item.div}','ALL')">${item.div}</td>
-                    <td class="font-bold">${item.mOpen.toLocaleString("en-IN")}</td>
-                    <td class="font-semibold text-slate-600">${item.mClose.toLocaleString("en-IN")}</td>
-                    <td class="bg-blue-50/40">${formatNet(item.mNet)}</td>
-                    <td class="font-bold bg-slate-50">${item.cOpen.toLocaleString("en-IN")}</td>
-                    <td class="font-semibold text-slate-600 bg-slate-50">${item.cClose.toLocaleString("en-IN")}</td>
-                    <td class="bg-emerald-50/40">${formatNet(item.cNet)}</td>
-                </tr>
-            `;
-        });
-    } else {
-        const tree = {};
-        list.forEach(item => {
-            tree[item.div] = tree[item.div] || [];
-            tree[item.div].push(item);
-        });
+    divs.forEach(dName => {
+        const rows = tree[dName];
+        const dTot = blank();
+        const dk = divKey(dName);
+        dTot.fy = dk ? DIV_TARGET[dk] : 0;
 
-        Object.entries(tree).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([dName, sdList]) => {
-            let dMOpen=0, dMClose=0, dMNet=0, dCOpen=0, dCClose=0, dCNet=0;
-            const style = divClassMap[dName] || divClassMap["OTHER DIVISION"];
-            
-            sdList.sort((a,b)=>a.sd.localeCompare(b.sd)).forEach((sub, idx) => {
-                dMOpen+=sub.mOpen; dMClose+=sub.mClose; dMNet+=sub.mNet; dCOpen+=sub.cOpen; dCClose+=sub.cClose; dCNet+=sub.cNet;
-                gMOpen+=sub.mOpen; gMClose+=sub.mClose; gMNet+=sub.mNet; gCOpen+=sub.cOpen; gCClose+=sub.cClose; gCNet+=sub.cNet;
-
-                const rs = idx === 0 ? `<td rowspan="${sdList.length}" class="${style} text-left font-bold clickable-cell align-middle" onclick="openDrillModal('${selM}','${dName}','ALL')">${dName}</td>` : "";
-                html += `
-                    <tr class="hover:bg-slate-50 border-b border-slate-100">
-                        ${rs}
-                        <td class="text-left font-semibold clickable-cell" onclick="openDrillModal('${selM}','${dName}','${sub.sd}')">${sub.sd}</td>
-                        <td class="font-bold">${sub.mOpen.toLocaleString("en-IN")}</td>
-                        <td class="font-semibold text-slate-600">${sub.mClose.toLocaleString("en-IN")}</td>
-                        <td class="bg-blue-50/40">${formatNet(sub.mNet)}</td>
-                        <td class="font-bold bg-slate-50">${sub.cOpen.toLocaleString("en-IN")}</td>
-                        <td class="font-semibold text-slate-600 bg-slate-50">${sub.cClose.toLocaleString("en-IN")}</td>
-                        <td class="bg-emerald-50/40">${formatNet(sub.cNet)}</td>
-                    </tr>
-                `;
+        if(isSD){
+            rows.forEach((a, idx) => {
+                add(dTot, a);
+                const c = calcRow(a, a.fy, ctx);
+                const rs = idx === 0 ? `<td rowspan="${rows.length}" class="div-cell clickable-cell" onclick="drillEnc('${selM}','${enc(dName)}','${enc("ALL")}')">${divLabel(dName)}</td>` : "";
+                html += `<tr>${rs}${mkCell(a.sd, dName, a.sd, "sd-cell clickable-cell")}${dataCells(a, c)}</tr>`;
             });
-            html += `
-                <tr class="row-div-total">
-                    <td colspan="2" class="text-left font-bold pl-3">${dName} Total</td>
-                    <td>${dMOpen.toLocaleString("en-IN")}</td>
-                    <td>${dMClose.toLocaleString("en-IN")}</td>
-                    <td>${formatNet(dMNet)}</td>
-                    <td>${dCOpen.toLocaleString("en-IN")}</td>
-                    <td>${dCClose.toLocaleString("en-IN")}</td>
-                    <td>${formatNet(dCNet)}</td>
-                </tr>
-            `;
-        });
-    }
+            const c = calcRow(dTot, dTot.fy, ctx);
+            html += `<tr class="row-div-total"><td colspan="2" class="sd-cell" style="text-align:center">Total</td>${dataCells(dTot, c)}</tr>`;
+            add(grand, dTot); grand.fy += dTot.fy;
+        } else {
+            rows.forEach(a => { add(dTot, a); });
+            const c = calcRow(dTot, dTot.fy, ctx);
+            html += `<tr>${mkCell(divLabel(dName), dName, "ALL", "div-cell clickable-cell")}${dataCells(dTot, c)}</tr>`;
+            add(grand, dTot); grand.fy += dTot.fy;
+        }
+    });
 
     tbody.innerHTML = html;
-    tfoot.innerHTML = `
-        <tr class="row-grand-total">
-            <td colspan="${isDivOnly?1:2}" class="text-left pl-3 uppercase">Grand Total</td>
-            <td>${gMOpen.toLocaleString("en-IN")}</td>
-            <td>${gMClose.toLocaleString("en-IN")}</td>
-            <td>${formatNet(gMNet)}</td>
-            <td>${gCOpen.toLocaleString("en-IN")}</td>
-            <td>${gCClose.toLocaleString("en-IN")}</td>
-            <td>${formatNet(gCNet)}</td>
-        </tr>
-    `;
+    const gc = calcRow(grand, grand.fy, ctx);
+    tfoot.innerHTML = `<tr class="row-grand-total"><td colspan="${lead}" class="${isShort ? "" : "grand-lbl"}">${grandLabel}</td>${dataCells(grand, gc)}</tr>`;
+
+    // card heading
+    const reportName = `${isSD ? "Sub Division Wise" : "Division Wise"} (${isShort ? "Shortfall" : "Progressive"})`;
+    document.getElementById("sumTableTitle").textContent = `📊 POSB Summary - ${reportName}`;
+    document.getElementById("sumTableSub").textContent = isShort
+        ? `Monthly target + proportionate target + FY target | ${ctx.titleRange}`
+        : `Target, proportionate target & shortfall | ${ctx.curRange}`;
+}
+
+function downloadSummaryImage(){
+    const el = document.getElementById("summaryCapture");
+    if(!el || typeof html2canvas === "undefined") return alert("Image export available nahi hai.");
+    html2canvas(el, { scale: 2, backgroundColor: "#ffffff", width: el.scrollWidth, windowWidth: el.scrollWidth + 24 }).then(cv => {
+        const a = document.createElement("a");
+        a.href = cv.toDataURL("image/png");
+        a.download = "POSB_Summary_Report.png";
+        a.click();
+    });
+}
+
+function exportSummaryExcel(){
+    exportTableToExcel("tableSummary", "POSB_Summary_" + document.getElementById("sumViewType").value + ".xlsx");
+}
+function exportSummaryPDF(){
+    const sel = document.getElementById("sumViewType");
+    exportSingleTablePDF("tableSummary", "POSB Summary - " + sel.options[sel.selectedIndex].text, true);
 }
 
 // ---------------- 2. DETAILED OFFICE VIEW ----------------
@@ -1107,6 +1322,9 @@ function renderCompareTable(){
         if(!map[k]){
             map[k] = { officeId: r.officeId, officeName: r.officeName, officeClass: r.officeClass, div: r.division, sd: r.subDivision, data: {} };
             cMonths.forEach(m => map[k].data[m] = {open:0, close:0, net:0});
+            map[k].fy = null;      // FY target (only division / sub-division level)
+            if(lvl === "division"){ const dk = divKey(r.division); map[k].fy = dk ? DIV_TARGET[dk] : null; }
+            else if(lvl === "subdivision"){ const st = sdTargetOf(r.division, r.subDivision); map[k].fy = st.ok ? st.t : null; }
         }
         cMonths.forEach(m => {
             const md = getPD(r, m);
@@ -1116,6 +1334,8 @@ function renderCompareTable(){
         });
     });
 
+    // shortfall = net - (FY target / 12 x months in the period)
+    const shortOf = (fy, net, m) => fy == null ? null : net - Math.round(fy * periodDefs[m].months.length / 12);
     const keys = Object.keys(map).sort();
     if(!keys.length){
         tbody.innerHTML = '<tr><td colspan="20" class="py-8 text-slate-400">No records found.</td></tr>';
@@ -1136,6 +1356,11 @@ function renderCompareTable(){
         let metricCells = "";
         cMetrics.forEach(metric => {
             cMonths.forEach(m => {
+                if(metric === "short"){
+                    const sv = shortOf(item.fy, item.data[m].net, m);
+                    metricCells += sv == null ? `<td class="text-slate-400">-</td>` : `<td>${formatNet(sv)}</td>`;
+                    return;
+                }
                 const val = item.data[m][metric] || 0;
                 if(metric === "net") metricCells += `<td>${formatNet(val)}</td>`;
                 else metricCells += `<td class="font-bold">${val.toLocaleString("en-IN")}</td>`;
@@ -1153,7 +1378,17 @@ function renderCompareTable(){
     const lblCols = lvl === "office" ? 4 : lvl === "subdivision" ? 2 : 1;
     const isAll = selDiv === "All" && selClass === "All";
     let totCells = "";
+    let totFy = null;
+    if(lvl !== "office"){
+        totFy = 0;
+        new Set(keys.map(k => map[k].div)).forEach(d => { const dk = divKey(d); if(dk) totFy += DIV_TARGET[dk]; });
+    }
     cMetrics.forEach(metric => cMonths.forEach(m => {
+        if(metric === "short"){
+            const sv = shortOf(totFy, tot[m].net, m);
+            totCells += sv == null ? `<td>-</td>` : `<td>${formatNet(sv)}</td>`;
+            return;
+        }
         const v = tot[m][metric];
         totCells += metric === "net" ? `<td>${formatNet(v)}</td>` : `<td>${v.toLocaleString("en-IN")}</td>`;
     }));
@@ -1200,7 +1435,7 @@ function exportTableToExcel(tableId, fileName){
     XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(tbl), "Dashboard_Data");
     XLSX.writeFile(wb, fileName);
 }
-function exportSingleTablePDF(tableId, title){
+function exportSingleTablePDF(tableId, title, useCss){
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF("l", "mm", "a4");
     doc.setFillColor(44, 12, 56);
@@ -1210,7 +1445,7 @@ function exportSingleTablePDF(tableId, title){
     doc.text("POSB PERFORMANCE DASHBOARD", 12, 10);
     doc.setFontSize(8.5); doc.text(title.toUpperCase(), 12, 14);
     doc.autoTable({
-        html: "#" + tableId, startY: 19, margin: { top: 19, right: 8, bottom: 10, left: 8 },
+        html: "#" + tableId, useCss: !!useCss, startY: 19, margin: { top: 19, right: 8, bottom: 10, left: 8 },
         theme: "grid", styles: { fontSize: 7, cellPadding: 1.5, valign: "middle", lineColor: [180,180,180], lineWidth: 0.15 },
         headStyles: { fillColor: [247, 202, 172], textColor: [0,0,0], fontStyle: "bold", halign: "center" }
     });
