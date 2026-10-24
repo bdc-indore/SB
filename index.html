@@ -50,6 +50,22 @@
         .t-prog tr.row-grand-total td.grand-lbl{text-align:center}
         .t-prog .clickable-cell,.t-short .clickable-cell{text-decoration:none}
         .t-short tr.row-grand-total td:first-child,.t-short tr.row-div-total td:first-child{text-align:left}
+        /* ---- Multi-select checkbox dropdown ---- */
+        .ms-wrap{position:relative}
+        .ms-btn{border:1px solid #cbd5e1;border-radius:0.5rem;padding:0.35rem 0.5rem;font-size:0.75rem;background-color:#f8fafc;font-weight:600;width:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;cursor:pointer;text-align:left}
+        .ms-btn:hover{border-color:#a78bfa}
+        .ms-btn .ms-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+        .ms-btn.active{background-color:#f3e8ff;border-color:#7e22ce;color:#3b0764}
+        .ms-panel{display:none;position:absolute;left:0;top:100%;margin-top:3px;min-width:100%;width:max-content;max-width:300px;background:#fff;border:1px solid #cbd5e1;border-radius:0.6rem;box-shadow:0 10px 25px rgba(0,0,0,.18);z-index:45}
+        .ms-panel.open{display:block}
+        .ms-top{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;border-bottom:1px solid #e2e8f0;background:#faf5ff;border-radius:0.6rem 0.6rem 0 0}
+        .ms-top input{flex:1 1 100%;border:1px solid #cbd5e1;border-radius:0.4rem;padding:3px 6px;font-size:11px;outline:none}
+        .ms-top a{font-size:10px;font-weight:700;color:#6b21a8;cursor:pointer;text-decoration:underline}
+        .ms-list{max-height:240px;overflow-y:auto;padding:4px}
+        .ms-item{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:0.35rem;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap}
+        .ms-item:hover{background:#f3e8ff}
+        .ms-item.special{background:#ecfdf5;border:1px solid #6ee7b7;color:#065f46;margin-bottom:4px}
+        .ms-item input{accent-color:#581c87}
     </style>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen flex flex-col justify-between text-xs">
@@ -171,15 +187,17 @@
             </div>
             <div>
                 <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">🏛️ Division</label>
-                <select id="offDivision" onchange="renderOfficeTable()" class="ctrl-select">
+                <select id="offDivision" onchange="onDivChange('off')" class="ctrl-select">
                     <option value="All">All Divisions</option>
                 </select>
             </div>
             <div>
-                <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">🏢 Office Class</label>
-                <select id="offClass" onchange="renderOfficeTable()" class="ctrl-select">
-                    <option value="All">All Classes</option>
-                </select>
+<label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">📍 Sub-Division (Multi)</label>
+<div id="offSD" class="ms-wrap"></div>
+</div>
+<div>
+<label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">🏢 Office Class (Multi)</label>
+<div id="offClass" class="ms-wrap"></div>
             </div>
             <div>
                 <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">Sort Metric (Month)</label>
@@ -205,7 +223,8 @@
                     <span id="officeRecordCountBadge" class="bg-purple-950 text-purple-200 text-[10px] font-bold px-2 py-0.5 rounded border border-purple-800"></span>
                 </div>
                 <div class="flex gap-1.5">
-                    <button onclick='exportTableToExcel("tableOffice","POSB_Detailed_Offices.xlsx")' class="bg-blue-700 hover:bg-blue-800 text-white text-[11px] font-semibold px-2.5 py-1 rounded shadow cursor-pointer">📥 Download Excel</button>
+                    <button onclick='exportOfficeExcel()' title="Current filter ke SAARE offices (sirf screen par load wale nahi)" class="bg-blue-700 hover:bg-blue-800 text-white text-[11px] font-semibold px-2.5 py-1 rounded shadow cursor-pointer">📥 Excel (All Filtered)</button>
+                    <button onclick='exportCompleteExcel()' title="Division wise + Sub-Division wise + Office wise + har Division ki alag sheet" class="bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-semibold px-2.5 py-1 rounded shadow cursor-pointer">📦 Complete Excel</button>
                 </div>
             </div>
             <div class="overflow-x-auto p-2">
@@ -243,7 +262,7 @@
 
     <!-- 3. RANKINGS VIEW -->
     <div id="viewRankings" class="space-y-3 hidden">
-        <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 items-end">
+        <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 items-end">
             <div>
                 <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">📅 Target Month / Period</label>
                 <select id="rnkMonth" onchange="renderRankingsTable()" class="ctrl-select font-bold text-purple-950 bg-purple-50"></select>
@@ -265,15 +284,17 @@
             </div>
             <div>
                 <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">🏛️ Division Filter</label>
-                <select id="rnkDivision" onchange="renderRankingsTable()" class="ctrl-select">
+                <select id="rnkDivision" onchange="onDivChange('rnk')" class="ctrl-select">
                     <option value="All">All Divisions</option>
                 </select>
             </div>
             <div>
-                <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">🏢 Class Filter</label>
-                <select id="rnkClass" onchange="renderRankingsTable()" class="ctrl-select">
-                    <option value="All">All Classes</option>
-                </select>
+<label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">📍 Sub-Division (Multi)</label>
+<div id="rnkSD" class="ms-wrap"></div>
+</div>
+<div>
+<label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">🏢 Class Filter (Multi)</label>
+<div id="rnkClass" class="ms-wrap"></div>
             </div>
         </div>
 
@@ -331,10 +352,8 @@
                     </select>
                 </div>
                 <div id="cmpClassWrapper" class="hidden">
-                    <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">3. Office Class</label>
-                    <select id="cmpClass" onchange="renderCompareTable()" class="ctrl-select">
-                        <option value="All">All Classes</option>
-                    </select>
+                    <label class="block text-[10px] font-bold uppercase text-purple-950 mb-0.5">3. Office Class (Multi)</label>
+                    <div id="cmpClass" class="ms-wrap"></div>
                 </div>
             </div>
 
@@ -803,16 +822,7 @@ function initDropdowns(){
         });
     });
     
-    const cSelects = ["offClass", "rnkClass", "cmpClass"];
-    cSelects.forEach(id => {
-        const el = document.getElementById(id);
-        if(!el) return;
-        el.innerHTML = '<option value="All">All Classes</option>';
-        [...allClasses].sort().forEach(c => {
-            const opt = document.createElement("option");
-            opt.value = c; opt.textContent = c; el.appendChild(opt);
-        });
-    });
+    initMultiFilters(allClasses);
 }
 
 function formatNet(val) {
@@ -1160,32 +1170,175 @@ function exportSummaryPDF(){
     exportSingleTablePDF("tableSummary", "POSB Summary - " + sel.options[sel.selectedIndex].text, true);
 }
 
+// ---------------- MULTI-SELECT CHECKBOX DROPDOWN ----------------
+const MS = {};
+const SD_MODE = "__SD_COMBINED__";
+function msEsc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function msInit(id, cfg){
+    const host = document.getElementById(id);
+    if(!host) return;
+    MS[id] = { items: cfg.items || [], sel: new Set(), allLabel: cfg.allLabel || "All", exclusive: cfg.exclusive || null, onChange: cfg.onChange || function(){}, search: !!cfg.search, filter: "" };
+    host.innerHTML =
+        `<button type="button" class="ms-btn"><span class="ms-txt"></span><span>▾</span></button>` +
+        `<div class="ms-panel"><div class="ms-top">` +
+            (cfg.search ? `<input type="text" placeholder="Search..." class="ms-search">` : "") +
+            `<a class="ms-all">Select All</a><a class="ms-clr">Clear (= All)</a>` +
+        `</div><div class="ms-list"></div></div>`;
+    host.querySelector(".ms-btn").onclick = e => { e.stopPropagation(); msToggleOpen(id); };
+    host.querySelector(".ms-panel").onclick = e => e.stopPropagation();
+    const s = host.querySelector(".ms-search");
+    if(s) s.oninput = () => { MS[id].filter = s.value.trim().toLowerCase(); msRenderList(id); };
+    host.querySelector(".ms-all").onclick = () => {
+        const st = MS[id]; st.sel.clear();
+        st.items.forEach(it => { if(it.value !== st.exclusive) st.sel.add(it.value); });
+        msRenderList(id); msUpdateBtn(id); st.onChange();
+    };
+    host.querySelector(".ms-clr").onclick = () => { MS[id].sel.clear(); msRenderList(id); msUpdateBtn(id); MS[id].onChange(); };
+    host.querySelector(".ms-list").onchange = e => {
+        const cb = e.target;
+        if(!cb || cb.type !== "checkbox") return;
+        const st = MS[id], v = cb.getAttribute("data-v");
+        if(cb.checked){
+            if(st.exclusive && v === st.exclusive) st.sel.clear();
+            else if(st.exclusive) st.sel.delete(st.exclusive);
+            st.sel.add(v);
+        } else st.sel.delete(v);
+        msRenderList(id); msUpdateBtn(id); st.onChange();
+    };
+    msRenderList(id); msUpdateBtn(id);
+}
+function msRenderList(id){
+    const st = MS[id], host = document.getElementById(id);
+    if(!st || !host) return;
+    const list = host.querySelector(".ms-list");
+    const items = st.items.filter(it => !st.filter || String(it.label).toLowerCase().includes(st.filter) || it.value === st.exclusive);
+    list.innerHTML = items.length ? items.map(it =>
+        `<label class="ms-item ${it.value === st.exclusive ? "special" : ""}"><input type="checkbox" data-v="${msEsc(it.value)}" ${st.sel.has(it.value) ? "checked" : ""}> ${msEsc(it.label)}</label>`
+    ).join("") : '<div class="text-slate-400 text-[11px] p-2">No options</div>';
+}
+function msUpdateBtn(id){
+    const st = MS[id], host = document.getElementById(id);
+    if(!st || !host) return;
+    const btn = host.querySelector(".ms-btn"), txt = host.querySelector(".ms-txt");
+    const picked = st.items.filter(it => st.sel.has(it.value));
+    let t = st.allLabel;
+    if(picked.length === 1) t = picked[0].label;
+    else if(picked.length === 2) t = picked.map(p => p.label).join(", ");
+    else if(picked.length > 2) t = picked.length + " selected";
+    txt.textContent = t; txt.title = picked.map(p => p.label).join(", ");
+    btn.classList.toggle("active", picked.length > 0);
+}
+function msToggleOpen(id){
+    const host = document.getElementById(id);
+    const panel = host.querySelector(".ms-panel");
+    const willOpen = !panel.classList.contains("open");
+    document.querySelectorAll(".ms-panel.open").forEach(p => p.classList.remove("open"));
+    if(willOpen){ panel.classList.add("open"); const s = panel.querySelector(".ms-search"); if(s) s.focus(); }
+}
+function msSetItems(id, items){
+    const st = MS[id]; if(!st) return;
+    st.items = items; st.sel.clear(); st.filter = "";
+    const s = document.getElementById(id).querySelector(".ms-search"); if(s) s.value = "";
+    msRenderList(id); msUpdateBtn(id);
+}
+function msGet(id){ return MS[id] ? [...MS[id].sel] : []; }
+document.addEventListener("click", () => document.querySelectorAll(".ms-panel.open").forEach(p => p.classList.remove("open")));
+
+function sdItemsFor(div){
+    const seen = new Map();
+    globalData.forEach(r => {
+        if(div !== "All" && r.division !== div) return;
+        const k = r.division + "||" + r.subDivision;
+        if(!seen.has(k)) seen.set(k, { value: k, label: div === "All" ? `${r.subDivision} (${r.division})` : r.subDivision, sortKey: r.division + " " + r.subDivision });
+    });
+    return [...seen.values()].sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+}
+function onDivChange(p){
+    const div = document.getElementById(p + "Division").value;
+    msSetItems(p + "SD", sdItemsFor(div));
+    if(p === "off") renderOfficeTable(); else renderRankingsTable();
+}
+function initMultiFilters(allClasses){
+    const cls = [...allClasses].sort().map(c => ({ value: c, label: c }));
+    msInit("offClass", { items: [{ value: SD_MODE, label: "📦 Sub-Division wise (Combined)" }].concat(cls), allLabel: "All Classes", exclusive: SD_MODE, onChange: renderOfficeTable });
+    msInit("offSD",    { items: sdItemsFor("All"), allLabel: "All Sub-Divisions", search: true, onChange: renderOfficeTable });
+    msInit("rnkClass", { items: cls, allLabel: "All Classes", onChange: renderRankingsTable });
+    msInit("rnkSD",    { items: sdItemsFor("All"), allLabel: "All Sub-Divisions", search: true, onChange: renderRankingsTable });
+    msInit("cmpClass", { items: cls, allLabel: "All Classes", onChange: renderCompareTable });
+}
+
+// ---------------- AGGREGATION HELPERS ----------------
+// Combine many office records into pseudo-records (same shape, so getPD / cumulative just work)
+function buildAgg(list, keyFn, baseFn){
+    const map = new Map();
+    list.forEach(r => {
+        const k = keyFn(r);
+        let a = map.get(k);
+        if(!a){
+            a = Object.assign({ officeId: "", officeName: "", officeClass: "SD", monthlyData: {}, cumulative: { open: 0, close: 0, net: 0 }, _n: 0 }, baseFn(r));
+            availableMonths.forEach(m => { a.monthlyData[m] = { open: 0, close: 0, net: 0 }; });
+            map.set(k, a);
+        }
+        a._n++;
+        availableMonths.forEach(m => {
+            const d = r.monthlyData[m];
+            if(d){ const t = a.monthlyData[m]; t.open += d.open; t.close += d.close; t.net += d.net; }
+        });
+        a.cumulative.open += r.cumulative.open; a.cumulative.close += r.cumulative.close; a.cumulative.net += r.cumulative.net;
+    });
+    return [...map.values()];
+}
+function buildSDAgg(list){
+    const out = buildAgg(list, r => r.division + "||" + r.subDivision, r => ({ subDivision: r.subDivision, division: r.division }));
+    out.forEach(a => { a.officeId = a._n; a.officeName = `${a.subDivision} (Sub-Division Total)`; });
+    return out;
+}
+function divRank(d){ const k = divKey(d); const i = k ? DIV_ORDER.indexOf(k) : -1; return i < 0 ? 99 : i; }
+
 // ---------------- 2. DETAILED OFFICE VIEW ----------------
+let officeSdMode = false;
+
+function getOfficeFiltered(){
+    const selDiv = document.getElementById("offDivision").value;
+    const cls = msGet("offClass");
+    const sds = new Set(msGet("offSD"));
+    const sdMode = cls.includes(SD_MODE);
+    let list = globalData;
+    if(selDiv !== "All") list = list.filter(r => r.division === selDiv);
+    if(sds.size) list = list.filter(r => sds.has(r.division + "||" + r.subDivision));
+    if(!sdMode && cls.length) list = list.filter(r => cls.includes(r.officeClass));
+    return { list: list.slice(), sdMode };
+}
+
 function renderOfficeTable(){
     const selM = document.getElementById("offMonth").value;
-    const selDiv = document.getElementById("offDivision").value;
-    const selClass = document.getElementById("offClass").value;
     const metric = document.getElementById("offSortMetric").value; // open, close, net
-    const dir = document.getElementById("offSortDir").value; // desc, asc
-    
+    const dir = document.getElementById("offSortDir").value;       // desc, asc
+
     document.getElementById("thOffCurrentMonth").textContent = `${periodLabel(selM)} Data`;
 
-    let filtered = globalData;
-    if(selDiv !== "All") filtered = filtered.filter(r => r.division === selDiv);
-    if(selClass !== "All") filtered = filtered.filter(r => r.officeClass === selClass);
+    const f = getOfficeFiltered();
+    officeSdMode = f.sdMode;
+    let rows = f.sdMode ? buildSDAgg(f.list) : f.list;
 
-    filtered.sort((a,b) => {
+    rows.sort((a, b) => {
         const vA = getPD(a, selM)[metric];
         const vB = getPD(b, selM)[metric];
         return dir === "desc" ? vB - vA : vA - vB;
     });
 
-    currentOfficeDataList = filtered;
+    const ths = document.querySelectorAll("#tableOffice thead tr:first-child th");
+    if(ths[1]) ths[1].textContent = f.sdMode ? "Offices" : "Office ID";
+    if(ths[2]) ths[2].textContent = f.sdMode ? "Sub-Division (Combined)" : "Office Name";
+
+    currentOfficeDataList = rows;
     currentOfficeRenderIndex = 0;
-    document.getElementById("officeRecordCountBadge").textContent = `Total Offices: ${filtered.length}`;
+    document.getElementById("officeRecordCountBadge").textContent = f.sdMode
+        ? `Sub-Divisions: ${rows.length} | Offices: ${f.list.length}`
+        : `Total Offices: ${rows.length}`;
     document.getElementById("officeTableTbody").innerHTML = "";
-    
-    if(!filtered.length){
+
+    if(!rows.length){
         document.getElementById("officeTableTbody").innerHTML = '<tr><td colspan="12" class="py-8 text-slate-400">No matching post offices found.</td></tr>';
         document.getElementById("officeLoadMoreWrap").classList.add("hidden");
         return;
@@ -1196,12 +1349,12 @@ function renderOfficeTable(){
 function appendOfficeChunk(selM){
     const tbody = document.getElementById("officeTableTbody");
     const chunk = currentOfficeDataList.slice(currentOfficeRenderIndex, currentOfficeRenderIndex + OFFICE_CHUNK_SIZE);
-    
+
     let html = "";
     chunk.forEach((item, i) => {
         const md = getPD(item, selM);
         html += `
-            <tr class="hover:bg-slate-50 border-b border-slate-100">
+            <tr class="hover:bg-slate-50 border-b border-slate-100 ${officeSdMode ? "bg-purple-50/30" : ""}">
                 <td>${currentOfficeRenderIndex + i + 1}</td>
                 <td class="font-mono font-bold text-purple-950">${item.officeId}</td>
                 <td class="text-left font-semibold">${item.officeName}</td>
@@ -1217,11 +1370,125 @@ function appendOfficeChunk(selM){
             </tr>
         `;
     });
-    tbody.insertAdjacentHTML("beforeend", html);
     currentOfficeRenderIndex += chunk.length;
+
+    // Sub-Division combined mode: grand total row at the end
+    if(officeSdMode && currentOfficeRenderIndex >= currentOfficeDataList.length){
+        const t = { o: 0, c: 0, n: 0, co: 0, cc: 0, cn: 0, off: 0 };
+        currentOfficeDataList.forEach(it => {
+            const d = getPD(it, selM);
+            t.o += d.open; t.c += d.close; t.n += d.net;
+            t.co += it.cumulative.open; t.cc += it.cumulative.close; t.cn += it.cumulative.net; t.off += it._n;
+        });
+        html += `
+            <tr class="row-grand-total">
+                <td></td><td>${t.off}</td><td class="text-left">TOTAL (${currentOfficeDataList.length} Sub-Divisions)</td><td>-</td><td>-</td><td>-</td>
+                <td>${t.o.toLocaleString("en-IN")}</td><td>${t.c.toLocaleString("en-IN")}</td><td>${formatNet(t.n)}</td>
+                <td>${t.co.toLocaleString("en-IN")}</td><td>${t.cc.toLocaleString("en-IN")}</td><td>${formatNet(t.cn)}</td>
+            </tr>`;
+    }
+    tbody.insertAdjacentHTML("beforeend", html);
     document.getElementById("officeLoadMoreWrap").classList.toggle("hidden", currentOfficeRenderIndex >= currentOfficeDataList.length);
 }
 function loadMoreOffices(){ appendOfficeChunk(document.getElementById("offMonth").value); }
+
+// ---- Excel: ALL filtered rows (not only the 100 loaded on screen) ----
+function xlsStamp(){ const d = new Date(); const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`; }
+function safeSheet(n){ return String(n).replace(/[\\\/\?\*\[\]:]/g, "-").slice(0, 31); }
+
+function exportOfficeExcel(){
+    if(!currentOfficeDataList.length) return alert("Download karne ke liye koi data nahi hai.");
+    const selM = document.getElementById("offMonth").value;
+    const pl = periodLabel(selM);
+    const sdMode = officeSdMode;
+    const header = ["#", sdMode ? "Offices" : "Office ID", sdMode ? "Sub-Division (Combined)" : "Office Name", "Class", "Sub-Division", "Division",
+        `${pl} - A/C Opened`, `${pl} - A/C Closed`, `${pl} - Net Addition`, "Cum. Opened", "Cum. Closed", "Cum. Net"];
+    const aoa = [header];
+    const t = [0, 0, 0, 0, 0, 0]; let offCnt = 0;
+    currentOfficeDataList.forEach((it, i) => {
+        const d = getPD(it, selM);
+        aoa.push([i + 1, it.officeId, it.officeName, it.officeClass, it.subDivision, it.division, d.open, d.close, d.net, it.cumulative.open, it.cumulative.close, it.cumulative.net]);
+        t[0] += d.open; t[1] += d.close; t[2] += d.net; t[3] += it.cumulative.open; t[4] += it.cumulative.close; t[5] += it.cumulative.net;
+        offCnt += sdMode ? it._n : 1;
+    });
+    aoa.push(["", sdMode ? offCnt : "", `TOTAL (${sdMode ? currentOfficeDataList.length + " Sub-Divisions" : currentOfficeDataList.length + " Offices"})`, "", "", "", ...t]);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{ wch: 6 }, { wch: 12 }, { wch: 34 }, { wch: 8 }, { wch: 20 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+    ws["!freeze"] = { xSplit: 0, ySplit: 1 };
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sdMode ? "SubDivision_Wise" : "Offices");
+    XLSX.writeFile(wb, `POSB_${sdMode ? "SubDivision_Wise" : "Detailed_Offices"}_${safeSheet(pl).replace(/\s+/g, "_")}_${xlsStamp()}.xlsx`);
+}
+
+// ---- Excel: COMPLETE report (Division wise + Sub-Division wise + Office wise + each Division sheet) ----
+function pdHeaders(){
+    const h = [];
+    periodOrder.forEach(p => { const s = periodShort(p); h.push(`${s} - Opened`, `${s} - Closed`, `${s} - Net`); });
+    h.push("Cum. Opened (Till Date)", "Cum. Closed (Till Date)", "Cum. Net (Till Date)");
+    return h;
+}
+function pdValues(rec){
+    const v = [];
+    periodOrder.forEach(p => { const d = getPD(rec, p); v.push(d.open, d.close, d.net); });
+    v.push(rec.cumulative.open, rec.cumulative.close, rec.cumulative.net);
+    return v;
+}
+function addTotalRow(aoa, labelCols, label, nameIdx, dataStart){
+    const n = aoa[0].length, tot = new Array(n).fill("");
+    tot[nameIdx] = label;
+    for(let c = dataStart; c < n; c++){ let s = 0; for(let r = 1; r < aoa.length; r++) s += Number(aoa[r][c]) || 0; tot[c] = s; }
+    aoa.push(tot);
+}
+function makeSheet(aoa, widths){
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    const cols = widths.slice();
+    while(cols.length < aoa[0].length) cols.push({ wch: 13 });
+    ws["!cols"] = cols;
+    return ws;
+}
+
+function exportCompleteExcel(){
+    if(!globalData.length) return alert("Data load nahi hua hai.");
+    const wb = XLSX.utils.book_new();
+    const all = globalData.slice();
+    const sortOff = (a, b) => divRank(a.division) - divRank(b.division) || a.division.localeCompare(b.division) || a.subDivision.localeCompare(b.subDivision) || a.officeName.localeCompare(b.officeName);
+    all.sort(sortOff);
+
+    // 1. Division wise
+    const divAgg = buildAgg(all, r => r.division, r => ({ division: r.division })).sort((a, b) => divRank(a.division) - divRank(b.division) || a.division.localeCompare(b.division));
+    let aoa = [["Division", "Offices"].concat(pdHeaders())];
+    divAgg.forEach(a => aoa.push([divLabel(a.division), a._n].concat(pdValues(a))));
+    addTotalRow(aoa, 1, "REGION TOTAL", 0, 1);
+    XLSX.utils.book_append_sheet(wb, makeSheet(aoa, [{ wch: 20 }, { wch: 9 }]), "Division_Wise");
+
+    // 2. Sub-Division wise
+    const sdAgg = buildAgg(all, r => r.division + "||" + r.subDivision, r => ({ division: r.division, subDivision: r.subDivision }))
+        .sort((a, b) => divRank(a.division) - divRank(b.division) || a.division.localeCompare(b.division) || a.subDivision.localeCompare(b.subDivision));
+    aoa = [["Division", "Sub-Division", "Offices"].concat(pdHeaders())];
+    sdAgg.forEach(a => aoa.push([divLabel(a.division), a.subDivision, a._n].concat(pdValues(a))));
+    addTotalRow(aoa, 2, "REGION TOTAL", 0, 2);
+    XLSX.utils.book_append_sheet(wb, makeSheet(aoa, [{ wch: 18 }, { wch: 22 }, { wch: 9 }]), "SubDivision_Wise");
+
+    // 3. Office wise (all offices)
+    const offHead = ["#", "Office ID", "Office Name", "Class", "Sub-Division", "Division"].concat(pdHeaders());
+    const offRows = list => list.map((r, i) => [i + 1, r.officeId, r.officeName, r.officeClass, r.subDivision, divLabel(r.division)].concat(pdValues(r)));
+    aoa = [offHead].concat(offRows(all));
+    addTotalRow(aoa, 5, `TOTAL (${all.length} Offices)`, 2, 6);
+    XLSX.utils.book_append_sheet(wb, makeSheet(aoa, [{ wch: 6 }, { wch: 12 }, { wch: 34 }, { wch: 8 }, { wch: 20 }, { wch: 16 }]), "Office_Wise_All");
+
+    // 4. One sheet per division (office wise inside that division, sorted by Sub-Division)
+    divAgg.forEach(d => {
+        const list = all.filter(r => r.division === d.division);
+        const a = [offHead].concat(offRows(list));
+        addTotalRow(a, 5, `TOTAL (${list.length} Offices)`, 2, 6);
+        let nm = safeSheet("Div_" + divLabel(d.division)), k = 2;
+        while(wb.SheetNames.includes(nm)) nm = safeSheet("Div_" + divLabel(d.division)).slice(0, 28) + "_" + (k++);
+        XLSX.utils.book_append_sheet(wb, makeSheet(a, [{ wch: 6 }, { wch: 12 }, { wch: 34 }, { wch: 8 }, { wch: 20 }, { wch: 16 }]), nm);
+    });
+
+    XLSX.writeFile(wb, `POSB_Complete_Report_${xlsStamp()}.xlsx`);
+}
+
 
 // ---------------- 3. RANKINGS VIEW ----------------
 function renderRankingsTable(){
@@ -1229,13 +1496,16 @@ function renderRankingsTable(){
     const rType = document.getElementById("rnkType").value;
     const metric = document.getElementById("rnkMetric").value;
     const selDiv = document.getElementById("rnkDivision").value;
-    const selClass = document.getElementById("rnkClass").value;
+    const selClassArr = msGet("rnkClass");
+    const selSdSet = new Set(msGet("rnkSD"));
 
     document.getElementById("thRnkCurrentMonth").textContent = `${periodLabel(selM)} Data`;
 
     let filtered = globalData;
     if(selDiv !== "All") filtered = filtered.filter(r => r.division === selDiv);
-    if(selClass !== "All") filtered = filtered.filter(r => r.officeClass === selClass);
+    if(selSdSet.size) filtered = filtered.filter(r => selSdSet.has(r.division + "||" + r.subDivision));
+    if(selClassArr.length) filtered = filtered.filter(r => selClassArr.includes(r.officeClass));
+    filtered = filtered.slice();
 
     filtered.sort((a,b) => {
         const vA = getPD(a, selM)[metric];
@@ -1281,7 +1551,8 @@ function onCmpLevelChange(){
 function renderCompareTable(){
     const lvl = document.getElementById("cmpLevel").value;
     const selDiv = document.getElementById("cmpDivision").value;
-    const selClass = lvl === "office" ? document.getElementById("cmpClass").value : "All";
+    const selClassArr = lvl === "office" ? msGet("cmpClass") : [];
+    const selClass = selClassArr.length ? "SOME" : "All";
     
     const cMonths = Array.from(document.querySelectorAll("input[name='cmpMonths']:checked")).map(cb => cb.value);
     const cMetrics = Array.from(document.querySelectorAll("input[name='cmpMetric']:checked")).map(cb => cb.value);
@@ -1314,7 +1585,7 @@ function renderCompareTable(){
 
     let filtered = globalData;
     if(selDiv !== "All") filtered = filtered.filter(r => r.division === selDiv);
-    if(lvl === "office" && selClass !== "All") filtered = filtered.filter(r => r.officeClass === selClass);
+    if(lvl === "office" && selClassArr.length) filtered = filtered.filter(r => selClassArr.includes(r.officeClass));
 
     const map = {};
     filtered.forEach(r => {
